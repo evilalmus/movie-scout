@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","lib":["ES2022","DOM"],"module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"esModuleInterop":true,"rootDir":".","outDir":"dist-server","types":["node"]},"include":["server/**/*.ts","lib/movies.ts","lib/query.ts"]}
