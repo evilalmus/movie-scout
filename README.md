@@ -449,3 +449,40 @@ cache for 90 days. Later scheduled refreshes follow the normal request budget.
 The Sources dialog and `/api/status` show discovery counts. The existing
 `node scripts/kids-in-mind.mjs` command also shows up to 20 queued/pending titles and errors.
 No additional environment variables or containers are required for this update.
+
+### Diagnostic and movie-change logging
+
+Denied Kids-in-Mind requests now produce an `access_denied` log before `backoff`.
+It includes the exact HTTP status, an allowlist of response headers (`server`,
+`content-type`, `cf-mitigated`, `cf-ray`, `retry-after`), and a sanitized excerpt
+of at most 300 characters from a bounded response sample. Cookies and authorization
+headers are never logged; scripts, common sensitive values, emails and IP addresses
+are removed/redacted. The collector still pauses on denial and does not bypass challenges.
+
+Every committed insert, actual update or deletion in `movies` produces a persistent
+`movie_audit` record through SQLite triggers. `[MovieAudit]` messages include audit ID,
+UTC time, movie ID/title and changed top-level JSON fields (plus changed database columns).
+Scores and prose are not copied into the audit. Updates that change only timestamps are
+logged; identical writes and rolled-back transactions are not. Existing movies are not
+retroactively logged. Audit rows are retained until explicitly removed by an administrator.
+
+The API prints its own changes immediately and polls for changes from other processes
+about every 15 seconds. CLI tools also print their own changes, so an audit ID may appear
+in both command output and API logs; it remains one database record. On API startup,
+old audit rows are not replayed to Docker logs. The persistent table remains available
+for history, including edits committed while the API was stopped.
+
+```bash
+docker logs --since 30m -f movie-scout-api 2>&1 | grep --line-buffered -E '\[KidsInMind\]|\[MovieAudit\]'
+```
+
+After rebuilding and recreating the API container, a previously paused collector stays
+paused. To allow it to try again with the added diagnostics:
+
+```bash
+docker exec movie-scout-api node scripts/kids-in-mind.mjs --resume
+```
+
+Resume preserves `next_request` and daily limits. A request will not run before the
+existing backoff expires. Another denial will pause it again. This logging update
+requires only a backend rebuild/recreation; no frontend changes are needed.

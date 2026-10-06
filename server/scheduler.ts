@@ -1,5 +1,5 @@
 import {kimTick} from './kids-in-mind.js';
-import {database} from './db.js';
+import {database,flushMovieAudit} from './db.js';
 import {daily,processJob} from './catalog.js';
 import {settings} from './config.js';
 import {connections} from './providers.js';
@@ -20,8 +20,9 @@ export function startScheduler(){
  }
  let kimTask:Promise<void>|null=null;
  function tickKIM(){if(stopped||kimTask)return;kimTask=kimTick().catch(e=>console.error('[KidsInMind]',e.message)).finally(()=>{kimTask=null;});}
+ const auditTimer=setInterval(()=>{try{flushMovieAudit();}catch(e){console.error('[MovieAudit] Read failed');}},15000);
  const kimTimer=setInterval(tickKIM,15000);tickKIM();
  const jobs=setInterval(()=>void work(),15000);const timer=setInterval(()=>void tickDaily(),60000);
  void work();void tickDaily();
- return {wake:()=>void work(),async stop(){stopped=true;clearInterval(kimTimer);clearInterval(jobs);clearInterval(timer);await Promise.allSettled([jobTask,dailyTask,kimTask].filter(Boolean));}};
+ return {wake:()=>void work(),async stop(){stopped=true;clearInterval(auditTimer);clearInterval(kimTimer);clearInterval(jobs);clearInterval(timer);await Promise.allSettled([jobTask,dailyTask,kimTask].filter(Boolean));}};
 }

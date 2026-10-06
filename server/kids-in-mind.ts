@@ -1,3 +1,4 @@
+import {responseDiagnostic} from './http-diagnostics.js';
 import {database} from './db.js';
 import type {Movie,Guidance,Category} from '../lib/movies.js';
 const origin='https://kids-in-mind.com';
@@ -47,7 +48,7 @@ async function download(url:string,ttl:number,delay=0){
  const contact=process.env.KIM_CONTACT?.trim();if(!contact)throw new Error('KIM_CONTACT is required');
  const response=await fetch(url,{headers:{'User-Agent':`MovieScout/1.0 (+${contact})`,Accept:url.endsWith('/robots.txt')?'text/plain':'text/html'},redirect:'manual',signal:AbortSignal.timeout(20000)});
  if(response.status>=400&&response.headers.has('retry-after')){const r=response.headers.get('retry-after')!;const until=/^\d+$/.test(r)?Date.now()+Number(r)*1000:Date.parse(r);if(Number.isFinite(until))await db.prepare('UPDATE kim_state SET next_request=MAX(next_request,?) WHERE id=1').bind(until).run();}
- if(response.status===401||response.status===403){await db.prepare('UPDATE kim_state SET paused=? WHERE id=1').bind('Access denied; review before manually resuming.').run();throw new Error('Access denied');}
+ if(response.status===401||response.status===403){await db.prepare('UPDATE kim_state SET paused=? WHERE id=1').bind('Access denied; review before manually resuming.').run();const diagnostic=await responseDiagnostic(response);await event('access_denied',{url,...diagnostic});throw new Error('Access denied (HTTP '+response.status+')');}
  if(response.status===429){const r=response.headers.get('retry-after')||'';const until=/^\d+$/.test(r)?Date.now()+Number(r)*1000:Date.parse(r);await db.prepare('UPDATE kim_state SET next_request=MAX(next_request,?) WHERE id=1').bind(Math.max(Date.now()+day,Number.isFinite(until)?until:0)).run();throw new Error('Rate limited; paused at least 24 hours');}
  if(response.status>=300&&response.status<400){
  if(url.endsWith('/robots.txt'))throw new Error('Robots redirect requires review');

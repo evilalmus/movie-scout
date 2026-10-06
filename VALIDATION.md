@@ -62,3 +62,9 @@ deduplication, ambiguous identities, existing-movie enrichment, new-movie TMDB-o
 imports, content-rating provenance and preserving fresh full-review scores. The complete
 17-test suite passed before the final content-rating provenance addition; targeted tests
 and type checking cover that addition. No live bulk harvesting was performed.
+
+## Logging update
+
+Added SQLite-triggered persistent movie audit events and bounded denial diagnostics.
+Regression tests cover insert/update/delete, external-connection edits, rollback and
+no-op suppression, header allowlisting, secret redaction and response excerpt limits.
