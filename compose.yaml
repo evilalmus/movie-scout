@@ -1,0 +1,52 @@
+services:
+  api:
+    image: movie-scout-api:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: movie-scout-api
+    restart: unless-stopped
+    init: true
+    user: "99:100"
+    env_file: .env
+    environment:
+      PORT: "4174"
+      DATA_DIR: /data
+    ports:
+      - "4175:4175"
+    volumes:
+      - "/mnt/user/appdata/movie-scout:/data"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 3m
+
+  frontend:
+    profiles: ["frontend"]
+    image: movie-scout-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: movie-scout-web
+    restart: unless-stopped
+    user: "99:100"
+    environment:
+      # Empty uses this container's /api proxy to the API container.
+      API_BASE: ""
+      DEMO: "false"
+    ports:
+      - "8087:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

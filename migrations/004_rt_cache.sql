@@ -1,0 +1,1 @@
+CREATE TABLE rt_cache(movie_id INTEGER PRIMARY KEY, data TEXT NOT NULL, expires_at INTEGER NOT NULL);

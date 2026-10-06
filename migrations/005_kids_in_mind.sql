@@ -1,0 +1,4 @@
+CREATE TABLE kim_state (id INTEGER PRIMARY KEY CHECK(id=1), last_request INTEGER NOT NULL DEFAULT 0, next_request INTEGER NOT NULL DEFAULT 0, paused TEXT, failures INTEGER NOT NULL DEFAULT 0, last_event TEXT);
+INSERT INTO kim_state(id) VALUES(1);
+CREATE TABLE kim_pages (url TEXT PRIMARY KEY, body TEXT NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE kim_results (movie_id INTEGER PRIMARY KEY, data TEXT NOT NULL, retry_at INTEGER NOT NULL, status TEXT NOT NULL);
