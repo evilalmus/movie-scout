@@ -17,6 +17,7 @@ COPY migrations ./migrations
 COPY scripts/retry-unmatched.mjs ./scripts/retry-unmatched.mjs
 COPY scripts/backfill-rt.mjs ./scripts/backfill-rt.mjs
 COPY scripts/kids-in-mind.mjs ./scripts/kids-in-mind.mjs
+COPY scripts/plex-import.mjs ./scripts/plex-import.mjs
 USER 99:100
 EXPOSE 4174
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

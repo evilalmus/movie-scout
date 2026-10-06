@@ -1,3 +1,4 @@
+import {plexTick} from './plex.js';
 import {kimTick} from './kids-in-mind.js';
 import {database,flushMovieAudit} from './db.js';
 import {daily,processJob} from './catalog.js';
@@ -18,11 +19,14 @@ export function startScheduler(){
   const {day,time}=clockParts();if(time<settings.dailyTime)return;
   dailyTask=(async()=>{const last=await database().prepare('SELECT status,updated_at FROM runs WHERE day=?').bind(day).first<{status:string;updated_at:number}>();if(last?.status==='complete'||(last&&Date.now()-last.updated_at<15*60000))return;const result=await daily();console.log('Daily popularity:',JSON.stringify(result));})().catch(e=>console.error('Daily popularity:',e.message)).finally(()=>{dailyTask=null;});await dailyTask;
  }
+ let plexTask:Promise<void>|null=null;
+ function tickPlex(){if(stopped||plexTask)return;plexTask=plexTick().catch(e=>console.error('[Plex]',e.message)).finally(()=>{plexTask=null;});}
+ const plexTimer=setInterval(tickPlex,15000);tickPlex();
  let kimTask:Promise<void>|null=null;
  function tickKIM(){if(stopped||kimTask)return;kimTask=kimTick().catch(e=>console.error('[KidsInMind]',e.message)).finally(()=>{kimTask=null;});}
  const auditTimer=setInterval(()=>{try{flushMovieAudit();}catch(e){console.error('[MovieAudit] Read failed');}},15000);
  const kimTimer=setInterval(tickKIM,15000);tickKIM();
  const jobs=setInterval(()=>void work(),15000);const timer=setInterval(()=>void tickDaily(),60000);
  void work();void tickDaily();
- return {wake:()=>void work(),async stop(){stopped=true;clearInterval(auditTimer);clearInterval(kimTimer);clearInterval(jobs);clearInterval(timer);await Promise.allSettled([jobTask,dailyTask,kimTask].filter(Boolean));}};
+ return {wake:()=>void work(),async stop(){stopped=true;clearInterval(plexTimer);clearInterval(auditTimer);clearInterval(kimTimer);clearInterval(jobs);clearInterval(timer);await Promise.allSettled([jobTask,dailyTask,kimTask,plexTask].filter(Boolean));}};
 }

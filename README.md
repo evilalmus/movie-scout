@@ -486,3 +486,72 @@ docker exec movie-scout-api node scripts/kids-in-mind.mjs --resume
 Resume preserves `next_request` and daily limits. A request will not run before the
 existing backoff expires. Another denial will pause it again. This logging update
 requires only a backend rebuild/recreation; no frontend changes are needed.
+
+
+## Import your Plex movie libraries (Unraid GUI)
+
+The API container can scan a Plex server and add its movies to Movie Scout. It uses only
+GET requests against Plex. It does not change Plex metadata, watch history, playlists or
+media files. No media folder mount is required. TV, music and other library types are ignored.
+
+Update the source files, preserving local configuration, rebuild `movie-scout-api:local`,
+and recreate the Unraid container from that image. Back up the persistent database before
+updating. Add these variables in **Unraid → Docker → movie-scout-api → Edit**:
+
+| Variable | Value |
+| --- | --- |
+| `PLEX_ENABLED` | `true` |
+| `PLEX_URL` | Server origin reachable from the container, e.g. `http://192.168.1.20:32400` |
+| `PLEX_TOKEN` | A token with access to that Plex server |
+| `PLEX_LIBRARY_IDS` | Optional comma-separated movie library IDs; blank selects all movie libraries |
+| `PLEX_IMPORT_DAILY_LIMIT` | Optional; default 250 import attempts per UTC day, maximum 500 |
+
+Use your actual LAN address or a Docker DNS hostname reachable through your configured
+network. Do not use `localhost`, `app.plex.tv`, `/web`, query strings, or a URL containing
+credentials. HTTPS certificates must validate normally. Keep the token in backend container
+configuration, never in GitHub Pages or a public repository, and do not paste it into chat.
+Plex's token instructions: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+
+The importer starts automatically when enabled, reads at most one 100-item page per worker
+tick (about 15 seconds), and rescans daily. The initial scan also reads the library list.
+Scanning and metadata imports progress together. Progress and item identities persist in
+SQLite across restarts; failed scans wait one hour, failed/unmatched imports wait one day.
+Changing library selection takes effect at the next scan; use `--rescan` to request it sooner.
+There is no removal from Movie Scout when a movie disappears from Plex.
+
+Plex TMDB IDs take priority, followed by IMDb IDs resolved through TMDB, then an exact
+unique title/year match. Conflicting or ambiguous identities stay pending and appear in
+status/logs. Already cataloged TMDB IDs are preserved rather than overwritten. Multiple
+Plex copies/editions resolve to one catalog movie. The library's movie classification is
+respected, so personal videos placed in a movie library may remain unmatched.
+
+Initial imports retrieve TMDB movie details only: title, poster, cast, director, runtime,
+genres, overview and available US certification. They do not call Safe Stream, OMDb or
+Rotten Tomatoes. Missing review/content scores stay unknown until normal enrichment or
+backfill. The independently paused Kids-in-Mind collector stays paused. Plex import attempts
+have their own daily cap and all TMDB calls also count against the existing TMDB budget.
+
+Inspect movie libraries (this makes one read-only request to Plex):
+```bash
+docker exec movie-scout-api node scripts/plex-import.mjs --libraries
+```
+Inspect progress and up to 20 pending-title reasons (local database only):
+```bash
+docker exec movie-scout-api node scripts/plex-import.mjs
+```
+Request another scan, preserving import budgets and the current scan's progress:
+```bash
+docker exec movie-scout-api node scripts/plex-import.mjs --rescan
+```
+Watch progress:
+```bash
+docker logs --since 30m -f movie-scout-api 2>&1 | grep --line-buffered -E '\[Plex\]|\[MovieAudit\]'
+```
+
+Events include `scan_started`, `scan_page`, `scan_complete`, `movie_imported`,
+`movie_existing`, `movie_pending`, and `scan_failed`. `/api/status` includes a `plex` section.
+Refresh the frontend to see newly imported movies. This integration requires only a backend
+update; no new container, frontend deployment or public write endpoint is required.
+
+References for Plex requests: https://developer.plex.tv/pms/ and
+https://support.plex.tv/articles/201638786-plex-media-server-url-commands/

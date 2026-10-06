@@ -13,9 +13,9 @@ services:
       PORT: "4174"
       DATA_DIR: /data
     ports:
-      - "4175:4175"
+      - "${API_BIND_ADDRESS:-0.0.0.0}:${API_PORT:-4174}:4174"
     volumes:
-      - "/mnt/user/appdata/movie-scout:/data"
+      - "${MOVIE_SCOUT_DATA_DIR:-/mnt/user/appdata/movie-scout}:/data"
     read_only: true
     tmpfs:
       - /tmp
@@ -39,7 +39,7 @@ services:
       API_BASE: ""
       DEMO: "false"
     ports:
-      - "8087:8080"
+      - "${FRONTEND_PORT:-8087}:8080"
     depends_on:
       api:
         condition: service_healthy

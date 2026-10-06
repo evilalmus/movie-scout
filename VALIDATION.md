@@ -68,3 +68,13 @@ and type checking cover that addition. No live bulk harvesting was performed.
 Added SQLite-triggered persistent movie audit events and bounded denial diagnostics.
 Regression tests cover insert/update/delete, external-connection edits, rollback and
 no-op suppression, header allowlisting, secret redaction and response excerpt limits.
+
+## Plex importer — 2026-10-06
+
+- Type checking and both builds passed; all 23 tests passed.
+- Mocked Plex/TMDB tests cover modern and legacy identifiers, paginated scan progress,
+  duplicate editions, preserving existing catalog rows, strict title/year matching,
+  movie-only selection, authentication failure backoff and token exclusion from logs.
+- Initial imports were verified to use only Plex and TMDB, not Safe Stream/OMDb/RT.
+- No connection to the user's Plex server has been made. Real-server validation requires
+  configuring PLEX_URL/PLEX_TOKEN and running the included --libraries/status commands.

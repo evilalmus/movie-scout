@@ -1,3 +1,4 @@
+import {plexStatus} from './plex.js';
 import {kimStatus} from './kids-in-mind.js';
 import {safeStreamUsage} from './safestream.js';
 import {createServer,IncomingMessage,ServerResponse} from 'node:http';
@@ -36,7 +37,7 @@ const server=createServer(async(req,res)=>{
   }
   if(path==='/api/status'&&req.method==='GET'){
    const db=database();const count=await db.prepare('SELECT COUNT(*) AS count FROM movies').first<{count:number}>();const lastRun=await db.prepare('SELECT day,status,updated_at FROM runs ORDER BY updated_at DESC LIMIT 1').first();
-   send(res,200,{connections:connections(),safeStream:await safeStreamUsage(),kidsInMind:await kimStatus(),count:count?.count||0,lastRun,scheduler:{enabled:settings.dailyEnabled,time:settings.dailyTime,timeZone:settings.timeZone,ready:connections().tmdb},publicImports:settings.publicImports});return;
+   send(res,200,{connections:connections(),safeStream:await safeStreamUsage(),kidsInMind:await kimStatus(),plex:await plexStatus(),count:count?.count||0,lastRun,scheduler:{enabled:settings.dailyEnabled,time:settings.dailyTime,timeZone:settings.timeZone,ready:connections().tmdb},publicImports:settings.publicImports});return;
   }
   if(path==='/api/catalog'&&req.method==='POST'){send(res,200,await findMovies(filtersSchema.parse(await body(req))));return;}
   if(path==='/api/lookup'&&req.method==='GET'){
